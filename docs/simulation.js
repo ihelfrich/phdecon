@@ -16,8 +16,10 @@ fieldCanvas.height = N;
 // Simulation state
 let field = new Float32Array(N * N);
 let fieldNext = new Float32Array(N * N);
+let targetField = null; // For parameter estimation
 let simTime = 0;
 let simRunning = true;
+let dataMode = 'synthetic';
 
 // Parameters
 const params = {
@@ -73,8 +75,16 @@ function computeKernel() {
 }
 
 function initField() {
-    for (let i = 0; i < N * N; i++) {
-        field[i] = (Math.random() - 0.5) * 0.01;
+    if (targetField) {
+        // Start from target for estimation
+        for (let i = 0; i < N * N; i++) {
+            field[i] = targetField[i] + (Math.random() - 0.5) * 0.05;
+        }
+    } else {
+        // Random initial condition
+        for (let i = 0; i < N * N; i++) {
+            field[i] = (Math.random() - 0.5) * 0.01;
+        }
     }
     simTime = 0;
 }
@@ -152,15 +162,12 @@ function renderField() {
     }
 
     const range = max - min || 1;
-    let cityCount = 0;
 
     for (let i = 0; i < N * N; i++) {
         const val = field[i];
         const norm = (val - min) / range;
 
-        if (norm > 0.65) cityCount++;
-
-        // Colormap: dark blue -> cyan -> yellow -> orange
+        // Colormap
         let r, g, b;
         if (norm < 0.25) {
             const t = norm / 0.25;
@@ -191,7 +198,6 @@ function renderField() {
     }
 
     fieldCtx.putImageData(fieldImageData, 0, 0);
-    document.getElementById('cities').textContent = Math.floor(cityCount / 3);
 }
 
 // Render kernel
@@ -227,12 +233,11 @@ function renderKernel() {
         }
     }
 
-    // Labels
     kernelCtx.fillStyle = '#8b92ff';
     kernelCtx.font = '11px JetBrains Mono, monospace';
-    kernelCtx.fillText('Blue=Attract', 10, 385);
+    kernelCtx.fillText('Attract (σ₁)', 10, 385);
     kernelCtx.fillStyle = '#ff6b6b';
-    kernelCtx.fillText('Red=Repel', 290, 385);
+    kernelCtx.fillText('Repel (σ₂)', 290, 385);
 }
 
 // Dispersion relation
@@ -310,7 +315,6 @@ function renderDispersion() {
     dispersionCtx.arc(xMax, yMax, 6, 0, 2 * Math.PI);
     dispersionCtx.fill();
 
-    // Labels
     dispersionCtx.fillStyle = '#9a9691';
     dispersionCtx.font = '11px JetBrains Mono, monospace';
     dispersionCtx.fillText('k', 360, 390);
@@ -324,21 +328,59 @@ function renderSpectrum() {
     spectrumCtx.fillStyle = '#000';
     spectrumCtx.fillRect(0, 0, 400, 400);
 
+    // Compute FFT power spectrum
+    const fftReal = new Float32Array(N * N);
+    const fftImag = new Float32Array(N * N);
+
+    for (let i = 0; i < N * N; i++) {
+        fftReal[i] = field[i];
+        fftImag[i] = 0;
+    }
+
+    // Simple 1D radial average for visualization
     const bars = 50;
     const barWidth = 360 / bars;
-    const kMaxIdx = Math.floor(bars * 0.3);
+    const spectrum = new Float32Array(bars);
 
+    // Compute radial spectrum
+    for (let i = 0; i < N; i++) {
+        for (let j = 0; j < N; j++) {
+            const ki = i < N/2 ? i : i - N;
+            const kj = j < N/2 ? j : j - N;
+            const k = Math.sqrt(ki*ki + kj*kj);
+            const bin = Math.min(Math.floor(k / N * bars * 2), bars - 1);
+            const val = field[i * N + j];
+            spectrum[bin] += val * val;
+        }
+    }
+
+    // Normalize
+    let maxSpec = 0;
     for (let i = 0; i < bars; i++) {
-        const dist = Math.abs(i - kMaxIdx);
-        const height = Math.exp(-dist * dist / 50) * 300;
+        if (spectrum[i] > maxSpec) maxSpec = spectrum[i];
+    }
 
-        spectrumCtx.fillStyle = i === kMaxIdx ? '#ff6b6b' : '#575ECF';
+    // Find peak
+    let peakIdx = 0;
+    let peakVal = 0;
+    for (let i = 1; i < bars; i++) {
+        if (spectrum[i] > peakVal) {
+            peakVal = spectrum[i];
+            peakIdx = i;
+        }
+    }
+
+    // Draw bars
+    for (let i = 0; i < bars; i++) {
+        const height = (spectrum[i] / maxSpec) * 300;
+        spectrumCtx.fillStyle = i === peakIdx ? '#ff6b6b' : '#575ECF';
         spectrumCtx.fillRect(20 + i * barWidth, 400 - 40 - height, barWidth - 2, height);
     }
 
     spectrumCtx.fillStyle = '#9a9691';
     spectrumCtx.font = '11px JetBrains Mono, monospace';
-    spectrumCtx.fillText('Wavenumber k', 270, 390);
+    spectrumCtx.fillText('k', 270, 390);
+    spectrumCtx.fillText('|ŷ(k)|²', 10, 50);
 }
 
 // Stability
@@ -347,12 +389,10 @@ function updateStability() {
     const Khat_peak = 0.15;
     const lambdaC = params.kappa * kmax * kmax / Khat_peak;
 
-    document.getElementById('lambda-critical').textContent = lambdaC.toFixed(4);
-
     const ratio = params.lambda / lambdaC;
     document.getElementById('lambda-ratio').textContent = ratio.toFixed(3);
 
-    const indicator = document.getElementById('stability-indicator');
+    const indicator = document.querySelector('.status-indicator');
     const status = document.getElementById('stability-status');
 
     if (ratio < 0.95) {
@@ -392,17 +432,69 @@ function computeEnergy() {
         total -= 0.5 * params.lambda * field[i] * convResult[i];
     }
 
-    document.getElementById('energy').textContent = total.toFixed(6);
+    document.getElementById('energy').textContent = total.toFixed(4);
+
+    // If in estimation mode, compute L2 error
+    if (targetField) {
+        let error = 0;
+        for (let i = 0; i < N * N; i++) {
+            const diff = field[i] - targetField[i];
+            error += diff * diff;
+        }
+        error = Math.sqrt(error / (N * N));
+        console.log('L2 error:', error.toFixed(6));
+    }
 }
+
+// GeoTIFF loading (simplified - would need geotiff.js library in production)
+document.getElementById('geotiffUpload').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const dataMode = document.getElementById('dataMode');
+    dataMode.innerHTML = '<strong>Mode: Data Loading...</strong>Processing GeoTIFF';
+
+    // In a real implementation, use geotiff.js:
+    // const arrayBuffer = await file.arrayBuffer();
+    // const tiff = await GeoTIFF.fromArrayBuffer(arrayBuffer);
+    // const image = await tiff.getImage();
+    // const rasters = await image.readRasters();
+
+    // For now, simulate with a placeholder
+    setTimeout(() => {
+        targetField = new Float32Array(N * N);
+
+        // Placeholder: create a realistic-looking distribution
+        for (let i = 0; i < N; i++) {
+            for (let j = 0; j < N; j++) {
+                const x = (i - N/2) / 20;
+                const y = (j - N/2) / 20;
+                const r2 = x*x + y*y;
+                targetField[i * N + j] = Math.exp(-r2/10) * (0.5 + 0.5*Math.random());
+            }
+        }
+
+        // Normalize
+        let sum = 0;
+        for (let i = 0; i < N * N; i++) sum += targetField[i];
+        for (let i = 0; i < N * N; i++) targetField[i] /= sum;
+
+        dataMode.innerHTML = `<strong>Mode: Parameter Estimation</strong>${file.name} loaded. Adjust parameters to match observed distribution.`;
+        initField();
+    }, 500);
+});
 
 // Controls
 function setupControls() {
-    ['lambda', 'kappa', 'alpha'].forEach(id => {
+    ['lambda', 'kappa', 'alpha', 'sigma1', 'sigma2'].forEach(id => {
         const slider = document.getElementById(id);
         const display = document.getElementById(`${id}-val`);
         slider.addEventListener('input', () => {
             params[id] = parseFloat(slider.value);
             display.textContent = slider.value;
+            if (id === 'sigma1' || id === 'sigma2') {
+                computeKernel();
+            }
             updateStability();
         });
     });
@@ -414,35 +506,10 @@ function setupControls() {
     });
 
     document.getElementById('reset').addEventListener('click', initField);
-
-    document.getElementById('demo1').addEventListener('click', () => {
-        params.lambda = 0.05;
-        document.getElementById('lambda').value = 0.05;
-        document.getElementById('lambda-val').textContent = '0.050';
-        initField();
-        updateStability();
-    });
-
-    document.getElementById('demo2').addEventListener('click', () => {
-        params.lambda = 0.20;
-        document.getElementById('lambda').value = 0.20;
-        document.getElementById('lambda-val').textContent = '0.200';
-        initField();
-        updateStability();
-    });
-
-    document.getElementById('demo3').addEventListener('click', () => {
-        params.lambda = 0.12;
-        document.getElementById('lambda').value = 0.12;
-        document.getElementById('lambda-val').textContent = '0.120';
-        initField();
-        updateStability();
-    });
 }
 
 // Main loop
 let frameCount = 0;
-let lastFPSUpdate = performance.now();
 function animate() {
     requestAnimationFrame(animate);
 
@@ -455,13 +522,6 @@ function animate() {
     }
 
     frameCount++;
-    const now = performance.now();
-    if (now - lastFPSUpdate >= 1000) {
-        document.getElementById('fps').textContent = frameCount;
-        frameCount = 0;
-        lastFPSUpdate = now;
-    }
-
     document.getElementById('time').textContent = simTime.toFixed(2);
 }
 

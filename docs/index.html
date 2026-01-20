@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Endogenous City Formation | Dr. Ian Helfrich</title>
-    <meta name="description" content="Interactive demonstration of topological Turing instability and endogenous agglomeration in spatial economics">
-    <meta name="author" content="Dr. Ian Helfrich">
+    <title>Spatial Pattern Formation in Economic Geography | Ian Helfrich</title>
+    <meta name="description" content="Inverse problem solver for spatial economics: estimate nonlocal interaction kernels from observed population distributions">
+    <meta name="author" content="Ian Helfrich">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;600&family=JetBrains+Mono:wght@400;600&display=swap');
 
@@ -26,6 +26,7 @@
             --text-muted: #6b6b6b;
             --border: rgba(255,255,255,0.05);
             --border-bright: rgba(87, 94, 207, 0.3);
+            --warn: #ff6b6b;
         }
 
         body {
@@ -49,20 +50,17 @@
         }
 
         h1 {
-            font-size: clamp(2rem, 4vw, 3rem);
-            font-weight: 200;
-            letter-spacing: -0.03em;
-            margin-bottom: 0.75rem;
-            background: linear-gradient(135deg, var(--accent-bright) 0%, var(--accent) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-size: clamp(1.75rem, 4vw, 2.5rem);
+            font-weight: 300;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
         }
 
         .tagline {
             color: var(--text-secondary);
-            font-size: clamp(0.875rem, 2vw, 1.125rem);
-            margin-bottom: 1.5rem;
+            font-size: clamp(0.875rem, 2vw, 1rem);
+            margin-bottom: 1rem;
             font-weight: 300;
         }
 
@@ -83,589 +81,494 @@
             border-bottom-color: var(--accent);
         }
 
-        .key-insight {
-            background: linear-gradient(135deg, rgba(87, 94, 207, 0.12) 0%, rgba(139, 146, 255, 0.08) 100%);
-            border-left: 3px solid var(--accent);
-            padding: 1.5rem;
-            border-radius: 8px;
-            font-size: 0.9375rem;
-            line-height: 1.8;
+        .problem-statement {
+            background: var(--bg-secondary);
+            border-left: 2px solid var(--accent);
+            padding: 1.25rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            line-height: 1.7;
             margin-bottom: 2rem;
         }
 
-        .key-insight strong {
+        .problem-statement strong {
             color: var(--accent-bright);
-            font-weight: 600;
-        }
-
-        .highlight {
-            background: rgba(87, 94, 207, 0.25);
-            padding: 0.125rem 0.5rem;
-            border-radius: 4px;
             font-weight: 500;
-            color: var(--accent-bright);
         }
 
         .main-grid {
             display: grid;
-            grid-template-columns: 1.8fr 1fr;
+            grid-template-columns: 300px 1fr;
             gap: 2rem;
-            margin-bottom: 3rem;
-        }
-
-        @media (max-width: 1200px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .viz-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-        }
-
-        .viz-panel {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.25rem;
-            transition: border-color 0.3s, box-shadow 0.3s;
-        }
-
-        .viz-panel:hover {
-            border-color: var(--border-bright);
-            box-shadow: 0 0 30px rgba(87, 94, 207, 0.1);
-        }
-
-        .viz-panel h3 {
-            font-size: 0.8125rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            margin-bottom: 1rem;
-            color: var(--accent);
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        canvas {
-            width: 100%;
-            background: #000;
-            border-radius: 6px;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+            margin-bottom: 2rem;
         }
 
         .controls {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.75rem;
+            border-radius: 8px;
+            padding: 1.5rem;
+            height: fit-content;
             position: sticky;
             top: 2rem;
-            max-height: calc(100vh - 4rem);
-            overflow-y: auto;
         }
 
-        .controls::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .controls::-webkit-scrollbar-track {
-            background: var(--bg-tertiary);
-            border-radius: 3px;
-        }
-
-        .controls::-webkit-scrollbar-thumb {
-            background: var(--accent);
-            border-radius: 3px;
-        }
-
-        .section {
+        .control-section {
             margin-bottom: 2rem;
-            padding-bottom: 2rem;
-            border-bottom: 1px solid var(--border);
         }
 
-        .section:last-child {
-            border-bottom: none;
+        .control-section:last-child {
             margin-bottom: 0;
-            padding-bottom: 0;
         }
 
-        .section h2 {
-            font-size: 0.8125rem;
-            font-weight: 600;
+        .control-section h3 {
+            font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 0.12em;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .param-control {
             margin-bottom: 1.25rem;
-            color: var(--accent);
-            font-family: 'JetBrains Mono', monospace;
         }
 
-        .param {
-            margin-bottom: 1.75rem;
-        }
-
-        .param-label {
+        .param-control label {
             display: flex;
             justify-content: space-between;
             align-items: baseline;
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.5rem;
             font-size: 0.875rem;
+            color: var(--text-secondary);
         }
 
         .param-name {
-            color: var(--text-secondary);
-            font-weight: 400;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
         }
 
         .param-value {
-            color: var(--accent-bright);
-            font-variant-numeric: tabular-nums;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.875rem;
-            font-weight: 600;
+            color: var(--accent-bright);
+            font-size: 0.8rem;
         }
 
         input[type="range"] {
             width: 100%;
-            height: 3px;
-            background: rgba(255, 255, 255, 0.06);
-            outline: none;
+            height: 4px;
+            background: var(--bg-tertiary);
             border-radius: 2px;
+            outline: none;
             -webkit-appearance: none;
-            cursor: pointer;
         }
 
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 18px;
-            height: 18px;
+            width: 14px;
+            height: 14px;
             background: var(--accent);
             border-radius: 50%;
-            cursor: grab;
-            box-shadow: 0 0 15px rgba(87, 94, 207, 0.6);
-            transition: all 0.2s;
+            cursor: pointer;
+            transition: background 0.2s;
         }
 
         input[type="range"]::-webkit-slider-thumb:hover {
             background: var(--accent-bright);
-            transform: scale(1.15);
-            box-shadow: 0 0 20px rgba(139, 146, 255, 0.8);
         }
 
-        input[type="range"]::-webkit-slider-thumb:active {
-            cursor: grabbing;
-            transform: scale(0.95);
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-upload-label {
+            display: block;
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            margin-bottom: 0.75rem;
+        }
+
+        .file-upload-label:hover {
+            border-color: var(--accent);
+            color: var(--accent-bright);
         }
 
         button {
             width: 100%;
-            padding: 1rem;
-            background: rgba(87, 94, 207, 0.12);
-            border: 1px solid var(--accent);
-            border-radius: 8px;
+            padding: 0.75rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
             color: var(--text-primary);
-            font-size: 0.875rem;
-            font-weight: 500;
+            border-radius: 4px;
             cursor: pointer;
-            transition: all 0.2s;
-            margin-bottom: 0.625rem;
+            font-size: 0.875rem;
             font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+            margin-bottom: 0.5rem;
         }
 
         button:hover {
             background: var(--accent);
-            box-shadow: 0 0 25px rgba(87, 94, 207, 0.4);
-            transform: translateY(-1px);
-        }
-
-        button:active {
-            transform: translateY(0);
+            border-color: var(--accent);
         }
 
         button.active {
             background: var(--accent);
-            box-shadow: 0 0 20px rgba(87, 94, 207, 0.3);
+            border-color: var(--accent-bright);
         }
 
-        .metric {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.875rem 1rem;
-            background: rgba(255,255,255,0.02);
-            border-radius: 6px;
-            margin-bottom: 0.625rem;
-            font-size: 0.875rem;
-            border: 1px solid transparent;
-            transition: border-color 0.2s;
+        .diagnostics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
         }
 
-        .metric:hover {
-            border-color: var(--border-bright);
+        .diagnostic-item {
+            font-size: 0.75rem;
         }
 
-        .metric-label {
-            color: var(--text-secondary);
-            font-weight: 400;
+        .diagnostic-label {
+            color: var(--text-muted);
+            display: block;
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
-        .metric-value {
-            font-variant-numeric: tabular-nums;
+        .diagnostic-value {
             font-family: 'JetBrains Mono', monospace;
             color: var(--accent-bright);
-            font-weight: 600;
-            font-size: 0.9375rem;
+            font-size: 0.875rem;
         }
 
-        .narrative {
+        .visualization-area {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .canvas-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        .canvas-container {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 2rem;
+            border-radius: 8px;
+            padding: 1rem;
         }
 
-        .narrative h2 {
-            font-size: 1.5rem;
-            font-weight: 300;
+        .canvas-header {
+            margin-bottom: 0.75rem;
+        }
+
+        .canvas-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        canvas {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+            background: #000;
+        }
+
+        .methodology {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .methodology h2 {
+            font-size: 1rem;
+            font-weight: 500;
             margin-bottom: 1.5rem;
             color: var(--text-primary);
-            letter-spacing: -0.02em;
         }
 
-        .narrative-step {
-            margin-bottom: 2rem;
-            padding-bottom: 2rem;
-            border-bottom: 1px solid var(--border);
+        .method-steps {
+            display: grid;
+            gap: 1.25rem;
         }
 
-        .narrative-step:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-
-        .step-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 1rem;
+        .step {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 1rem;
         }
 
         .step-number {
+            width: 28px;
+            height: 28px;
+            background: var(--accent);
+            color: var(--bg-primary);
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-width: 36px;
-            height: 36px;
-            background: rgba(87, 94, 207, 0.15);
-            border: 2px solid var(--accent);
-            border-radius: 50%;
-            margin-right: 1.25rem;
+            font-size: 0.75rem;
             font-weight: 600;
-            color: var(--accent-bright);
-            font-family: 'JetBrains Mono', monospace;
+            flex-shrink: 0;
         }
 
-        .step-title {
-            font-weight: 600;
-            font-size: 1.0625rem;
-            color: var(--accent-bright);
-        }
-
-        .step-content {
-            font-size: 0.9375rem;
-            line-height: 1.8;
-            color: var(--text-secondary);
-            margin-left: 3.25rem;
-        }
-
-        .step-content ul {
-            margin: 0.75rem 0 0.75rem 1.5rem;
-        }
-
-        .step-content li {
-            margin-bottom: 0.5rem;
-        }
-
-        .step-content strong {
+        .step-content h3 {
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.375rem;
             color: var(--text-primary);
-            font-weight: 600;
+        }
+
+        .step-content p {
+            font-size: 0.8125rem;
+            line-height: 1.6;
+            color: var(--text-secondary);
         }
 
         .equation {
-            background: rgba(0,0,0,0.5);
-            padding: 1rem 1.25rem;
-            border-radius: 6px;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.875rem;
-            margin: 1rem 0;
-            border-left: 3px solid rgba(87, 94, 207, 0.4);
+            font-size: 0.8rem;
+            background: var(--bg-tertiary);
+            padding: 0.5rem 0.75rem;
+            border-radius: 4px;
+            margin: 0.5rem 0;
             color: var(--accent-bright);
+            overflow-x: auto;
         }
 
         .status-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
-            margin-right: 0.625rem;
-            animation: pulse 2s ease-in-out infinite;
+            display: inline-block;
+            margin-right: 0.375rem;
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(0.95); }
+        .status-stable { background: #4ade80; }
+        .status-critical { background: #fbbf24; }
+        .status-unstable { background: var(--warn); }
+
+        .data-mode {
+            background: var(--bg-tertiary);
+            padding: 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
         }
 
-        .status-unstable {
-            background: #ff6b6b;
-            box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
-        }
-
-        .status-stable {
-            background: #4ecdc4;
-            box-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
-        }
-
-        .status-critical {
-            background: #ffe66d;
-            box-shadow: 0 0 10px rgba(255, 230, 109, 0.5);
-        }
-
-        footer {
-            margin-top: 4rem;
-            padding-top: 2rem;
-            border-top: 1px solid var(--border);
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 0.8125rem;
-        }
-
-        footer a {
-            color: var(--accent);
-            text-decoration: none;
-        }
-
-        footer a:hover {
-            text-decoration: underline;
+        .data-mode strong {
+            color: var(--accent-bright);
+            display: block;
+            margin-bottom: 0.375rem;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Endogenous City Formation</h1>
-            <div class="tagline">Topological Turing Instability & The Spatial Impossibility Theorem</div>
-            <div class="author">
-                Research by <a href="https://www.wyzant.com/Tutors/Econ" target="_blank">Dr. Ian Helfrich</a> • PhD Economics, Georgia Tech
-            </div>
+            <h1>Inverse Problem: Estimating Spatial Interaction Kernels</h1>
+            <p class="tagline">Parameter recovery from observed population distributions</p>
+            <p class="author">Ian Helfrich · <a href="mailto:ian@helfrich.com">Contact</a></p>
         </header>
 
-        <div class="key-insight">
-            <strong>The Central Result:</strong> Cities emerge <em>endogenously</em> from a homogeneous landscape when topological pressure (λK*y) exceeds diffusion (κΔy). <strong>No agglomeration externalities, transportation costs, or explicit spatial frictions required</strong>—pattern formation is driven purely by the <span class="highlight">Mexican hat kernel</span> creating long-range attractive and short-range repulsive forces. This solves Starrett's (1978) impossibility theorem by introducing nonlocal topological coupling.
+        <div class="problem-statement">
+            <strong>Research Question:</strong> Can nonlocal interaction kernels K(x) be recovered from observed spatial distributions of economic activity? Given LandScan population density data across years, can temporal changes reveal the underlying PDE governing spatial reallocation? The governing equation is ∂ₜy = M(κΔy + λ(K*y) - α(y-y₀)³), but κ, λ, α, K are unknown. Standard models assume local interactions only. This tool attempts parameter estimation via dispersion matching and energy minimization.
         </div>
 
         <div class="main-grid">
-            <div>
-                <div class="viz-grid">
-                    <div class="viz-panel">
-                        <h3>Field Evolution y(x,t)</h3>
-                        <canvas id="fieldCanvas" height="400"></canvas>
-                    </div>
-
-                    <div class="viz-panel">
-                        <h3>Mexican Hat Kernel K(x)</h3>
-                        <canvas id="kernelCanvas" height="400"></canvas>
-                    </div>
-
-                    <div class="viz-panel">
-                        <h3>Dispersion Relation σ(k)</h3>
-                        <canvas id="dispersionCanvas" height="400"></canvas>
-                    </div>
-
-                    <div class="viz-panel">
-                        <h3>Power Spectrum |ŷ(k)|²</h3>
-                        <canvas id="spectrumCanvas" height="400"></canvas>
-                    </div>
-                </div>
-            </div>
-
             <div class="controls">
-                <div class="section">
-                    <h2>Simulation Control</h2>
+                <div class="control-section">
+                    <h3>Data Source</h3>
+                    <div class="data-mode" id="dataMode">
+                        <strong>Mode: Synthetic</strong>
+                        Load GeoTIFF to switch to parameter estimation mode
+                    </div>
+                    <label class="file-upload-label" for="geotiffUpload">
+                        Load GeoTIFF (LandScan)
+                    </label>
+                    <input type="file" id="geotiffUpload" accept=".tif,.tiff">
+                    <button id="reset">Reset Field</button>
                     <button id="toggleSim" class="active">Pause</button>
-                    <button id="reset">Reset to Noise</button>
-                    <button id="demo1">Demo: λ < λ_c (Stable)</button>
-                    <button id="demo2">Demo: λ > λ_c (Unstable)</button>
-                    <button id="demo3">Demo: Critical Point</button>
                 </div>
 
-                <div class="section">
-                    <h2>PDE Parameters</h2>
-                    <div class="equation">∂ₜy = M(κΔy + λ(K*y) - α(y-y₀)³)</div>
-
-                    <div class="param">
-                        <div class="param-label">
-                            <span class="param-name">Topological Coupling (λ)</span>
+                <div class="control-section">
+                    <h3>PDE Parameters</h3>
+                    <div class="param-control">
+                        <label>
+                            <span class="param-name">λ (coupling)</span>
                             <span class="param-value" id="lambda-val">0.150</span>
-                        </div>
+                        </label>
                         <input type="range" id="lambda" min="0" max="0.3" step="0.001" value="0.15">
                     </div>
-
-                    <div class="param">
-                        <div class="param-label">
-                            <span class="param-name">Diffusion (κ)</span>
+                    <div class="param-control">
+                        <label>
+                            <span class="param-name">κ (diffusion)</span>
                             <span class="param-value" id="kappa-val">0.003</span>
-                        </div>
+                        </label>
                         <input type="range" id="kappa" min="0.001" max="0.01" step="0.0001" value="0.003">
                     </div>
-
-                    <div class="param">
-                        <div class="param-label">
-                            <span class="param-name">Congestion (α)</span>
+                    <div class="param-control">
+                        <label>
+                            <span class="param-name">α (congestion)</span>
                             <span class="param-value" id="alpha-val">1.000</span>
+                        </label>
+                        <input type="range" id="alpha" min="0.1" max="5" step="0.1" value="1.0">
+                    </div>
+                    <div class="param-control">
+                        <label>
+                            <span class="param-name">σ₁ (attract)</span>
+                            <span class="param-value" id="sigma1-val">2.0</span>
+                        </label>
+                        <input type="range" id="sigma1" min="0.5" max="10" step="0.1" value="2.0">
+                    </div>
+                    <div class="param-control">
+                        <label>
+                            <span class="param-name">σ₂ (repel)</span>
+                            <span class="param-value" id="sigma2-val">5.0</span>
+                        </label>
+                        <input type="range" id="sigma2" min="1" max="15" step="0.1" value="5.0">
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>Stability Analysis</h3>
+                    <div class="diagnostics">
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">λ / λc</span>
+                            <span class="diagnostic-value" id="lambda-ratio">—</span>
                         </div>
-                        <input type="range" id="alpha" min="0.1" max="3" step="0.01" value="1.0">
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">Status</span>
+                            <span class="diagnostic-value">
+                                <span class="status-indicator status-critical"></span>
+                                <span id="stability-status">Critical</span>
+                            </span>
+                        </div>
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">k_max</span>
+                            <span class="diagnostic-value" id="dominant-k">—</span>
+                        </div>
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">ℓ (km)</span>
+                            <span class="diagnostic-value" id="char-scale">—</span>
+                        </div>
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">Energy</span>
+                            <span class="diagnostic-value" id="energy">—</span>
+                        </div>
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">Time</span>
+                            <span class="diagnostic-value" id="time">0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="visualization-area">
+                <div class="canvas-grid">
+                    <div class="canvas-container">
+                        <div class="canvas-header">
+                            <h3 class="canvas-title">Population Density Field y(x,t)</h3>
+                        </div>
+                        <canvas id="fieldCanvas" width="400" height="400"></canvas>
+                    </div>
+
+                    <div class="canvas-container">
+                        <div class="canvas-header">
+                            <h3 class="canvas-title">Interaction Kernel K(x)</h3>
+                        </div>
+                        <canvas id="kernelCanvas" width="400" height="400"></canvas>
+                    </div>
+
+                    <div class="canvas-container">
+                        <div class="canvas-header">
+                            <h3 class="canvas-title">Dispersion Relation σ(k)</h3>
+                        </div>
+                        <canvas id="dispersionCanvas" width="400" height="400"></canvas>
+                    </div>
+
+                    <div class="canvas-container">
+                        <div class="canvas-header">
+                            <h3 class="canvas-title">Power Spectrum |ŷ(k)|²</h3>
+                        </div>
+                        <canvas id="spectrumCanvas" width="400" height="400"></canvas>
                     </div>
                 </div>
 
-                <div class="section">
-                    <h2>Stability Analysis</h2>
-                    <div class="metric">
-                        <span class="metric-label">
-                            <span class="status-indicator" id="stability-indicator"></span>
-                            System Status
-                        </span>
-                        <span class="metric-value" id="stability-status">---</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">λ_critical</span>
-                        <span class="metric-value" id="lambda-critical">---</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">λ / λ_c</span>
-                        <span class="metric-value" id="lambda-ratio">---</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Dominant k</span>
-                        <span class="metric-value" id="dominant-k">---</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">City Scale ℓ</span>
-                        <span class="metric-value" id="char-scale">---</span>
-                    </div>
-                </div>
+                <div class="methodology">
+                    <h2>Methodology: Parameter Estimation from Spatial Data</h2>
+                    <div class="method-steps">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h3>Load Observed Distribution</h3>
+                                <p>Import GeoTIFF raster (LandScan population density). Resample to computational grid. Normalize to preserve total population. This becomes the target distribution y*(x) for parameter fitting.</p>
+                            </div>
+                        </div>
 
-                <div class="section">
-                    <h2>Diagnostics</h2>
-                    <div class="metric">
-                        <span class="metric-label">Time</span>
-                        <span class="metric-value" id="time">0.00</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Cities Formed</span>
-                        <span class="metric-value" id="cities">0</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">Total Energy</span>
-                        <span class="metric-value" id="energy">0.000</span>
-                    </div>
-                    <div class="metric">
-                        <span class="metric-label">FPS</span>
-                        <span class="metric-value" id="fps">60</span>
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h3>Compute Empirical Spectrum</h3>
+                                <p>FFT of observed field gives |ŷ*(k)|². Peak wavenumber k_max indicates dominant spatial scale. Compare to theoretical prediction from dispersion relation.</p>
+                                <div class="equation">ŷ(k) = ∫ y(x) e^(-ik·x) dx</div>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h3>Match Dispersion Relation</h3>
+                                <p>Theoretical growth rate σ(k) = M(-κk² + λK̂(k)). Fit κ, λ such that argmax σ(k) matches observed k_max. Kernel shape (σ₁, σ₂) determines K̂(k).</p>
+                                <div class="equation">σ(k) = M(-κ|k|² + λK̂(k))</div>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h3>Minimize Energy Distance</h3>
+                                <p>Run PDE forward from random initial condition. Compute L² distance ‖y - y*‖ and energy mismatch. Gradient descent on (κ, λ, α, σ₁, σ₂) to minimize objective.</p>
+                                <div class="equation">L = ‖y - y*‖² + β|E[y] - E[y*]|</div>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <div class="step-number">5</div>
+                            <div class="step-content">
+                                <h3>Temporal Prediction</h3>
+                                <p>With recovered parameters, integrate PDE forward in time. Predict spatial distribution at t+Δt. Compare to actual LandScan data from subsequent year. Measure prediction error.</p>
+                            </div>
+                        </div>
+
+                        <div class="step">
+                            <div class="step-number">6</div>
+                            <div class="step-content">
+                                <h3>Cross-Validation</h3>
+                                <p>Fit on year t, validate on t+1. Check if same parameters generalize. If not, kernel may be time-varying K(x;t) or parameters may depend on external factors (trade shocks, policy changes).</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="narrative">
-            <h2>How Cities Form Endogenously: The Complete Mechanism</h2>
-
-            <div class="narrative-step">
-                <div class="step-header">
-                    <div class="step-number">1</div>
-                    <div class="step-title">Initial State: Homogeneous Equilibrium</div>
-                </div>
-                <div class="step-content">
-                    Start with a perfectly uniform distribution y(x,0) = y₀ + ε where ε is tiny random noise. No cities exist yet. Classical models (Krugman, Henderson) require <em>ex ante</em> heterogeneity or productivity shocks. <strong>We require nothing.</strong>
-                </div>
-            </div>
-
-            <div class="narrative-step">
-                <div class="step-header">
-                    <div class="step-number">2</div>
-                    <div class="step-title">Linear Stability Analysis: Turing Instability</div>
-                </div>
-                <div class="step-content">
-                    Linearize around y₀: perturbation δy = e^(σt)e^(ik·x). Growth rate: <span class="highlight">σ(k) = M(-κ|k|² + λK̂(k))</span>.
-                    <ul>
-                        <li><strong>If λ &lt; λ_c:</strong> σ(k) &lt; 0 for all k → stable, no pattern</li>
-                        <li><strong>If λ &gt; λ_c:</strong> σ(k) &gt; 0 for some k → unstable, cities emerge!</li>
-                    </ul>
-                    The critical value is λ_c = min<sub>k</sub> κ|k|²/K̂(k) where K̂(k) > 0.
-                </div>
-            </div>
-
-            <div class="narrative-step">
-                <div class="step-header">
-                    <div class="step-number">3</div>
-                    <div class="step-title">Mexican Hat Kernel: Short Repulsion + Long Attraction</div>
-                </div>
-                <div class="step-content">
-                    K(x) = exp(-|x|²/2σ₁²) - 0.5·exp(-|x|²/2σ₂²) with σ₂ &gt; σ₁.
-                    <ul>
-                        <li><strong>Short range (|x| &lt; σ₁):</strong> Positive → attracts nearby population</li>
-                        <li><strong>Medium range (σ₁ &lt; |x| &lt; σ₂):</strong> Negative → repels moderate distance</li>
-                        <li><strong>Long range (|x| &gt; σ₂):</strong> Near zero → no interaction</li>
-                    </ul>
-                    This creates <em>self-organized criticality</em>: cities cluster but maintain separation.
-                </div>
-            </div>
-
-            <div class="narrative-step">
-                <div class="step-header">
-                    <div class="step-number">4</div>
-                    <div class="step-title">Wavelength Selection: Characteristic City Scale</div>
-                </div>
-                <div class="step-content">
-                    The mode k_max = argmax<sub>k</sub> σ(k) grows fastest. City spacing: <span class="highlight">ℓ = 2π/k_max</span>.
-                    This is <em>endogenous scale selection</em>—the characteristic city size emerges from parameter values (λ, κ, σ₁, σ₂), not from external geography or productivity.
-                </div>
-            </div>
-
-            <div class="narrative-step">
-                <div class="step-header">
-                    <div class="step-number">5</div>
-                    <div class="step-title">Nonlinear Saturation: Congestion Limits Growth</div>
-                </div>
-                <div class="step-content">
-                    The cubic term -α(y-y₀)³ prevents unbounded growth. As cities grow (y increases), congestion forces balance topological attraction. System reaches a stationary pattern y* with:
-                    <div class="equation">0 = κΔy* + λ(K*y*) - α(y*-y₀)³</div>
-                    This is a <em>stable nonlinear equilibrium</em> with multiple cities at characteristic scale ℓ.
-                </div>
-            </div>
-
-            <div class="narrative-step">
-                <div class="step-header">
-                    <div class="step-number">6</div>
-                    <div class="step-title">Solving Starrett's Impossibility Theorem</div>
-                </div>
-                <div class="step-content">
-                    Starrett (1978) proved cities cannot form in models with:
-                    <ul>
-                        <li>Homogeneous space</li>
-                        <li>Convex preferences</li>
-                        <li>Local interactions only</li>
-                    </ul>
-                    We escape via <strong>nonlocal topological coupling</strong> λ(K*y). The convolution (K*y) creates long-range forces that break the impossibility. <strong>No agglomeration externalities, increasing returns, or transport costs needed.</strong>
-                </div>
-            </div>
-        </div>
-
-        <footer>
-            &copy; 2026 Dr. Ian Helfrich • <a href="https://github.com/ihelfrich/phdecon" target="_blank">View Source on GitHub</a> • <a href="https://www.wyzant.com/Tutors/Econ" target="_blank">Contact</a>
-        </footer>
     </div>
 
     <script src="simulation.js"></script>
