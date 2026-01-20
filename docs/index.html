@@ -6,6 +6,10 @@
     <title>Spatial Pattern Formation in Economic Geography | Ian Helfrich</title>
     <meta name="description" content="Inverse problem solver for spatial economics: estimate nonlocal interaction kernels from observed population distributions">
     <meta name="author" content="Ian Helfrich">
+
+    <!-- Modern libraries for high-performance computation -->
+    <script src="https://cdn.jsdelivr.net/npm/geotiff@2.0.7/dist-browser/geotiff.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;600&family=JetBrains+Mono:wght@400;600&display=swap');
 
@@ -477,6 +481,14 @@
                             <span class="diagnostic-label">Time</span>
                             <span class="diagnostic-value" id="time">0.00</span>
                         </div>
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">FPS</span>
+                            <span class="diagnostic-value" id="fps">60</span>
+                        </div>
+                        <div class="diagnostic-item">
+                            <span class="diagnostic-label">Compute</span>
+                            <span class="diagnostic-value" id="compute-mode">GPU</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -571,6 +583,6 @@
         </div>
     </div>
 
-    <script src="simulation.js"></script>
+    <script type="module" src="simulation.js"></script>
 </body>
 </html>
